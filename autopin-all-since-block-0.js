@@ -9,9 +9,11 @@ async function fetchAll() {
   function remove1process() {
     numProcs -= 1;
   }
+  var lt_ts = new Date().getTime()-(6*30*24*60*60*1000); //Pin from block 0 to 6 months ago.
   const filter = {
     'ts': {
-      '$gte': 1601557480488
+      '$gte': 1601557480488, //ts from 1st october 2020, dtube's (avalon's) mainent launch.
+      '$lt': lt_ts
     }
   };
   const mongoDBClient = new MongoClient('mongodb://10.147.17.3:27017/avalon?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false');
@@ -19,17 +21,9 @@ async function fetchAll() {
   const mongoDB = mongoDBClient.db("avalon");
   const contents_collection = mongoDB.collection("contents");
   var response = await contents_collection.find(filter).toArray();
-  var last_exec = 0;
-  var numRows = 0;
-  var last_error_print = 0;
-  var num_supressed_errors = 0;
   if (numProcs < 50) {
       if(typeof response != 'undefined') {
         for (var document_var in response) {
-          if (Date.now() - last_exec >= 3000) {
-            last_exec = Date.now();
-            console.log("Wrote "+numRows+" rows...");
-          }
           document_var = response[document_var];
           if(typeof document_var.json != 'undefined' && typeof document_var.json.files != 'undefined') {
             if(typeof document_var.json.nsfw == 'undefined') {
