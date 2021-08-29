@@ -1,30 +1,21 @@
 const syncClient = require('sync-rest-client');
 const { exec } = require('child_process');
 const API_ADDRESS = "https://dtube.fso.ovh/list_videos.php";
-var myArgs = process.argv.slice(2);
-console.log('myArgs: ', myArgs);
-if(myArgs.length != 1) {
-  console.log("This App requires exactly 1 argument, 1 author's name...");
-  return -1;
-}
-var author_posts = syncClient.get(API_ADDRESS+"?author="+myArgs[0]).body;
+const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
 
-async function fetchAll(author_posts) {
+
+async function fetchAll(author_posts, limit_pins) {
   let numProcs = 0;
   function remove1process() {
     numProcs -= 1;
   }
-  var last_exec = 0;
-  var numRows = 0;
-  var last_error_print = 0;
-  var num_supressed_errors = 0;
   var pinnedImgsIPFS = 0;
   var pinnedVidsIPFS = 0;
   var pinnedImgsBTFS = 0;
   var pinnedVidsBTFS = 0;
   if(typeof author_posts != 'undefined') {
     for (var document_var in author_posts) {
-      if (numProcs < 50) {
+      if (numProcs < limit_pins) {
         document_var = author_posts[document_var];
         if(typeof document_var.files_json != 'undefined') {
           var files = JSON.parse(document_var.files_json);
@@ -78,10 +69,35 @@ async function fetchAll(author_posts) {
   console.log("Tried to pin "+(pinnedImgsIPFS+pinnedImgsBTFS)+" images (IPFS: "+pinnedImgsIPFS+", BTFS: "+pinnedImgsBTFS+").");
 	}
 }
+
+
+function listVideos(author_posts) {
+  if(typeof author_posts != 'undefined') {
+    for (var document_var in author_posts) {
+      console.log(author_posts[document_var].explorers[1]);
+    }
+  }
+}
+
+
 function sleep(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
 }
-console.log(author_posts);
-fetchAll(author_posts);
+
+
+var myArgs = process.argv;
+var author_posts = syncClient.get(API_ADDRESS+"?author="+myArgs[3]).body;
+if(myArgs.length != 4) {
+  console.log("This App requires exactly 2 arguments, 1) command (pin or ls) 2) author's name...\n");
+  console.log("Example:\nnode "+__filename.slice(__dirname.length + 1)+" pin fasolo97\nnode "+__filename.slice(__dirname.length + 1)+" ls fasolo97");
+  return -1;
+}
+
+
+if (myArgs[2] == "pin") {
+  fetchAll(author_posts, limit_pins);
+} else if (myArgs[2] == "ls") {
+  listVideos(author_posts);
+}
