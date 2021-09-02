@@ -89,8 +89,8 @@ function sleep(ms) {
 
 var myArgs = process.argv;
 var author_posts = syncClient.get(API_ADDRESS+"?author="+myArgs[3]).body;
-if(myArgs.length != 4) {
-  console.log("This App requires exactly 2 arguments, 1) command (pin or ls) 2) author's name...\n");
+if(5 > myArgs.length < 4) {
+  console.log("This App requires 2 or 3 arguments, 1) command (pin or ls) 2) author's name...\n");
   console.log("Example:\nnode "+__filename.slice(__dirname.length + 1)+" pin fasolo97\nnode "+__filename.slice(__dirname.length + 1)+" ls fasolo97");
   return -1;
 }

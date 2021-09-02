@@ -1,10 +1,9 @@
 const syncClient = require('sync-rest-client');
 const { exec } = require('child_process');
 const MongoClient = require('mongodb').MongoClient;
+const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
 
-
-fetchAll();
-async function fetchAll() {
+async function fetchAll(limit_pins, resolutions) {
   let numProcs = 0;
   function remove1process() {
     numProcs -= 1;
@@ -44,10 +43,12 @@ async function fetchAll() {
           || typeof document_var.json.files.ipfs != 'undefined')) {
             if(typeof document_var.json.files.ipfs != 'undefined') {
               for (var file in document_var.json.files.ipfs.vid) {
-                file = document_var.json.files.ipfs.vid[file];
-                numProcs += 1;
-                exec("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h "+file, remove1process);
-                console.log("IPFS: Pinned video: "+file);
+                if (file in resolutions) {
+                  file = document_var.json.files.ipfs.vid[file];
+                  numProcs += 1;
+                  exec("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h "+file, remove1process);
+                  console.log("IPFS: Pinned video: "+file);
+                }
               }
               for (var file in document_var.json.files.ipfs.img) {
                 file = document_var.json.files.ipfs.img[file];
@@ -58,10 +59,12 @@ async function fetchAll() {
             }
             if(typeof document_var.json.files.btfs != 'undefined') {
               for (var file in document_var.json.files.btfs.vid) {
-                file = document_var.json.files.btfs.vid[file];
-                numProcs += 1;
-                exec("btfs pin add "+file, remove1process);
-                console.log("BTFS: Pinned video: "+file);
+                if (file in resolutions) {
+                  file = document_var.json.files.btfs.vid[file];
+                  numProcs += 1;
+                  exec("btfs pin add "+file, remove1process);
+                  console.log("BTFS: Pinned video: "+file);
+                }
               }
               for (var file in document_var.json.files.btfs.img) {
                 file = document_var.json.files.btfs.img[file];
@@ -84,3 +87,15 @@ function sleep(ms) {
     setTimeout(resolve, ms);
   });
 }
+
+
+const arguments = process.argv;
+var resolutions = [];
+
+if (arguments.length < 3) {
+  resolutions = ["240", "480"]
+} else {
+  resolutions = arguments[2].split(",")
+}
+
+fetchAll(limit_pins, resolutions);
