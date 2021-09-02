@@ -20,7 +20,7 @@ async function fetchAll(limit_pins, resolutions) {
   const mongoDB = mongoDBClient.db("avalon");
   const contents_collection = mongoDB.collection("contents");
   var response = await contents_collection.find(filter).toArray();
-  if (numProcs < 50) {
+  if (numProcs < limit_pins) {
       if(typeof response != 'undefined') {
         for (var document_var in response) {
           document_var = response[document_var];
