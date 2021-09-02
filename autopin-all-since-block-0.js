@@ -43,7 +43,7 @@ async function fetchAll(limit_pins, resolutions) {
           || typeof document_var.json.files.ipfs != 'undefined')) {
             if(typeof document_var.json.files.ipfs != 'undefined') {
               for (var file in document_var.json.files.ipfs.vid) {
-                if (file in resolutions) {
+                if (resolutions.includes(file)) {
                   file = document_var.json.files.ipfs.vid[file];
                   numProcs += 1;
                   exec("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h "+file, remove1process);
@@ -59,7 +59,7 @@ async function fetchAll(limit_pins, resolutions) {
             }
             if(typeof document_var.json.files.btfs != 'undefined') {
               for (var file in document_var.json.files.btfs.vid) {
-                if (file in resolutions) {
+                if (resolutions.includes(file)) {
                   file = document_var.json.files.btfs.vid[file];
                   numProcs += 1;
                   exec("btfs pin add "+file, remove1process);
@@ -93,9 +93,9 @@ const arguments = process.argv;
 var resolutions = [];
 
 if (arguments.length < 3) {
-  resolutions = ["240", "480"]
+  resolutions = ["240", "480"];
 } else {
-  resolutions = arguments[2].split(",")
+  resolutions = arguments[2].split(",");
 }
 
 fetchAll(limit_pins, resolutions);
