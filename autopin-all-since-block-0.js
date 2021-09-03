@@ -3,7 +3,7 @@ const { exec } = require('child_process');
 const MongoClient = require('mongodb').MongoClient;
 const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
 
-async function fetchAll(limit_pins, resolutions) {
+async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
   let numProcs = 0;
   function remove1process() {
     numProcs -= 1;
@@ -15,7 +15,7 @@ async function fetchAll(limit_pins, resolutions) {
       '$lt': lt_ts
     }
   };
-  const mongoDBClient = new MongoClient('mongodb://10.147.17.3:27017/avalon?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false');
+  const mongoDBClient = new MongoClient(mongo_connect_string);
   await mongoDBClient.connect();
   const mongoDB = mongoDBClient.db("avalon");
   const contents_collection = mongoDB.collection("contents");
@@ -43,7 +43,7 @@ async function fetchAll(limit_pins, resolutions) {
           || typeof document_var.json.files.ipfs != 'undefined')) {
             if(typeof document_var.json.files.ipfs != 'undefined') {
               for (var file in document_var.json.files.ipfs.vid) {
-                if (resolutions.includes(file) || resolutions == "*") {
+                if (resolutions.includes(file) || resolutions == "all") {
                   file = document_var.json.files.ipfs.vid[file];
                   numProcs += 1;
                   exec("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h "+file, remove1process);
@@ -59,7 +59,7 @@ async function fetchAll(limit_pins, resolutions) {
             }
             if(typeof document_var.json.files.btfs != 'undefined') {
               for (var file in document_var.json.files.btfs.vid) {
-                if (resolutions.includes(file) || resolutions == "*") {
+                if (resolutions.includes(file) || resolutions == "all") {
                   file = document_var.json.files.btfs.vid[file];
                   numProcs += 1;
                   exec("btfs pin add "+file, remove1process);
@@ -81,6 +81,8 @@ async function fetchAll(limit_pins, resolutions) {
   } else {
     await sleep(1500);
   }
+  console.log("Tried to pin "+(pinnedVidsIPFS+pinnedVidsBTFS)+" videos (IPFS: "+pinnedVidsIPFS+", BTFS: "+pinnedVidsBTFS+").");
+  console.log("Tried to pin "+(pinnedImgsIPFS+pinnedImgsBTFS)+" images (IPFS: "+pinnedImgsIPFS+", BTFS: "+pinnedImgsBTFS+").");
 }
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -95,11 +97,13 @@ var resolutions = [];
 if (arguments.length < 3) {
   resolutions = ["240", "480"];
 } else {
-  if (arguments[2] == "*" || arguments[2] == "all") {
-    resolutions = "*";
+  if (arguments[2] == "all") {
+    resolutions = "all";
   } else {
     resolutions = arguments[2].split(",");
   }
 }
 
-fetchAll(limit_pins, resolutions);
+
+mongo_connect = 'mongodb://10.147.17.3:27017/avalon?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false';
+fetchAll(mongo_connect, limit_pins, resolutions);
