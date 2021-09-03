@@ -4,7 +4,7 @@ const API_ADDRESS = "https://dtube.fso.ovh/list_videos.php";
 const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
 
 
-async function fetchAll(author_posts, limit_pins) {
+async function fetchAll(author_posts, limit_pins, resolutions) {
   let numProcs = 0;
   function remove1process() {
     numProcs -= 1;
@@ -87,17 +87,28 @@ function sleep(ms) {
 }
 
 
-var myArgs = process.argv;
-var author_posts = syncClient.get(API_ADDRESS+"?author="+myArgs[3]).body;
-if(5 > myArgs.length < 4) {
+var arguments = process.argv;
+if(arguments.length >= 6 || arguments.length < 4) {
   console.log("This App requires 2 or 3 arguments, 1) command (pin or ls) 2) author's name...\n");
   console.log("Example:\nnode "+__filename.slice(__dirname.length + 1)+" pin fasolo97\nnode "+__filename.slice(__dirname.length + 1)+" ls fasolo97");
   return -1;
 }
 
+var author_posts = syncClient.get(API_ADDRESS+"?author="+arguments[3]).body;
+var resolutions = [];
 
-if (myArgs[2] == "pin") {
-  fetchAll(author_posts, limit_pins);
-} else if (myArgs[2] == "ls") {
+if (arguments.length < 3) {
+  resolutions = ["240", "480"];
+} else {
+  if (arguments[2] == "all") {
+    resolutions = "all";
+  } else {
+    resolutions = arguments[2].split(",");
+  }
+}
+
+if (arguments[2] == "pin") {
+  fetchAll(author_posts, limit_pins, resolutions);
+} else if (arguments[2] == "ls") {
   listVideos(author_posts);
 }
