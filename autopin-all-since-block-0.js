@@ -20,9 +20,10 @@ async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
   const mongoDB = mongoDBClient.db("avalon");
   const contents_collection = mongoDB.collection("contents");
   var response = await contents_collection.find(filter).toArray();
-  if (numProcs < limit_pins) {
-      if(typeof response != 'undefined') {
-        for (var document_var in response) {
+  var pinnedVidsIPFS = 0, pinnedVidsBTFS = 0, pinnedImgsIPFS, pinnedImgsBTFS = 0;
+  if(typeof response != 'undefined') {
+    for (var document_var in response) {
+      if (numProcs < limit_pins) {
           document_var = response[document_var];
           if(typeof document_var.json != 'undefined' && typeof document_var.json.files != 'undefined') {
             if(typeof document_var.json.nsfw == 'undefined') {
@@ -48,6 +49,7 @@ async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
                   numProcs += 1;
                   exec("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h "+file, remove1process);
                   console.log("IPFS: Pinned video: "+file);
+                  pinnedVidsIPFS += 1;
                 }
               }
               for (var file in document_var.json.files.ipfs.img) {
@@ -55,6 +57,7 @@ async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
                 numProcs += 1;
                 exec("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h "+file, remove1process);
                 console.log("IPFS: Pinned img: "+file);
+                pinnedImgsIPFS += 1;
               }
             }
             if(typeof document_var.json.files.btfs != 'undefined') {
@@ -64,6 +67,7 @@ async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
                   numProcs += 1;
                   exec("btfs pin add "+file, remove1process);
                   console.log("BTFS: Pinned video: "+file);
+                  pinnedVidsBTFS += 1;
                 }
               }
               for (var file in document_var.json.files.btfs.img) {
@@ -71,19 +75,19 @@ async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
                 numProcs += 1;
                 exec("btfs pin add "+file, remove1process);
                 console.log("BTFS: Pinned img: "+file);
+                pinnedImgsBTFS += 1;
               }
             }
           }
+      } else {
+        await sleep(1500);
       }
-    } else {
-      console.log(response.statusCode);
     }
-  } else {
-    await sleep(1500);
   }
   console.log("Tried to pin "+(pinnedVidsIPFS+pinnedVidsBTFS)+" videos (IPFS: "+pinnedVidsIPFS+", BTFS: "+pinnedVidsBTFS+").");
   console.log("Tried to pin "+(pinnedImgsIPFS+pinnedImgsBTFS)+" images (IPFS: "+pinnedImgsIPFS+", BTFS: "+pinnedImgsBTFS+").");
 }
+
 function sleep(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
