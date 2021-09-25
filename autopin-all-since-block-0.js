@@ -1,7 +1,10 @@
 const syncClient = require('sync-rest-client');
 const { exec } = require('child_process');
 const MongoClient = require('mongodb').MongoClient;
+const { Command } = require("commander");
+
 const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
+
 
 async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
   let numProcs = 0;
@@ -95,16 +98,20 @@ function sleep(ms) {
 }
 
 
-const arguments = process.argv;
-var resolutions = [];
+const program = new Command();
+program.option("-r, --resolutions", 'Resolutions to pin, separated by "," you could also use "all", or something like "240,480".')
+program.parse(process.argv);
 
-if (arguments.length < 3) {
+const options = program.opts();
+
+if (typeof options.resolutions == 'undefined') {
   resolutions = ["240", "480"];
+  console.log("Defaulting to "+ JSON.stringify(resolutions)+" Resolutions");
 } else {
-  if (arguments[2] == "all") {
+  if (options.resolutions == "all") {
     resolutions = "all";
   } else {
-    resolutions = arguments[2].split(",");
+    resolutions = options.resolutions.split(",");
   }
 }
 
