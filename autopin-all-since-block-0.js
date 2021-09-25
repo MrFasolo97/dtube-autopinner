@@ -1,4 +1,4 @@
-const syncClient = require('sync-rest-client');
+const restClient = require('sync-rest-client');
 const { exec } = require('child_process');
 const MongoClient = require('mongodb').MongoClient;
 const { Command } = require("commander");
@@ -6,17 +6,33 @@ const { Command } = require("commander");
 const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
 
 
-async function fetchAll(mongo_connect_string, limit_pins, filter, resolutions, pin_videos, pin_images) {
+async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_pins, author, resolutions, pin_videos, pin_images, options) {
   let numProcs = 0;
   function remove1process() {
     numProcs -= 1;
   }
-  const mongoDBClient = new MongoClient(mongo_connect_string);
-  await mongoDBClient.connect();
-  const mongoDB = mongoDBClient.db("avalon");
-  const contents_collection = mongoDB.collection("contents");
-  var response = await contents_collection.find(filter).toArray();
-  var pinnedVidsIPFS = 0, pinnedVidsBTFS = 0, pinnedImgsIPFS, pinnedImgsBTFS = 0;
+  if (typeof author == 'undefined' || author == "all") {
+    const mongoDBClient = new MongoClient(mongo_connect_string);
+    await mongoDBClient.connect();
+    const mongoDB = mongoDBClient.db("avalon");
+    const contents_collection = mongoDB.collection("contents");
+    filter = {
+      'ts': {
+        '$gte': 1601557480488, //ts from 1st october 2020, dtube's (avalon's) mainent launch.
+        '$lt': lt_ts
+      }
+    };
+    var response = await contents_collection.find(filter).toArray();
+  } else {
+    const API_ADDRESS = "https://dtube.fso.ovh/list_videos.php";
+    console.log("Pinning all videos from "+author);
+    var response = await restClient.get(API_ADDRESS+"?author="+author);
+    if(options.verbose == true) {
+        console.log(response.statusCode);
+    }
+    response = response.body;
+  }
+  var pinnedVidsIPFS = 0, pinnedVidsBTFS = 0, pinnedImgsIPFS = 0, pinnedImgsBTFS = 0;
   if(typeof response != 'undefined') {
     for (var document_var in response) {
       if (numProcs < limit_pins) {
@@ -35,43 +51,55 @@ async function fetchAll(mongo_connect_string, limit_pins, filter, resolutions, p
               var oc = document_var.json.oc;
             }
           }
-          if(typeof document_var.json.files != 'undefined' &&
+          if(typeof document_var.json != 'undefined' && typeof document_var.json.files != 'undefined' &&
           (typeof document_var.json.files.btfs != 'undefined'
           || typeof document_var.json.files.ipfs != 'undefined')) {
             if(typeof document_var.json.files.ipfs != 'undefined') {
-              for (var file in document_var.json.files.ipfs.vid && pin_videos) {
-                if (resolutions.includes(file) || resolutions == "all") {
+              for (var file in document_var.json.files.ipfs.vid) {
+                if ((resolutions.includes(file) || resolutions == "all") && pin_videos) {
                   file = document_var.json.files.ipfs.vid[file];
                   numProcs += 1;
-                  exec("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h "+file, remove1process);
-                  console.log("IPFS: Pinned video: "+file);
+                  exec(ipfs_command+file, remove1process);
+                  if(options.verbose) {
+                    console.log("IPFS: Pinned video: "+file);
+                  }
                   pinnedVidsIPFS += 1;
                 }
               }
-              for (var file in document_var.json.files.ipfs.img && pin_images) {
-                file = document_var.json.files.ipfs.img[file];
-                numProcs += 1;
-                exec("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h "+file, remove1process);
-                console.log("IPFS: Pinned img: "+file);
-                pinnedImgsIPFS += 1;
+              if(pin_images) {
+                for (var file in document_var.json.files.ipfs.img) {
+                  file = document_var.json.files.ipfs.img[file];
+                  numProcs += 1;
+                  exec(ipfs_command+file, remove1process);
+                  if(options.verbose) {
+                    console.log("IPFS: Pinned img: "+file);
+                  }
+                  pinnedImgsIPFS += 1;
+                }
               }
             }
             if(typeof document_var.json.files.btfs != 'undefined') {
-              for (var file in document_var.json.files.btfs.vid && pin_videos) {
-                if (resolutions.includes(file) || resolutions == "all") {
+              for (var file in document_var.json.files.btfs.vid) {
+                if (resolutions.includes(file) || resolutions == "all" && pin_videos) {
                   file = document_var.json.files.btfs.vid[file];
                   numProcs += 1;
-                  exec("btfs pin add "+file, remove1process);
-                  console.log("BTFS: Pinned video: "+file);
+                  exec(btfs_command+file, remove1process);
+                  if(options.verbose) {
+                    console.log("BTFS: Pinned video: "+file);
+                  }
                   pinnedVidsBTFS += 1;
                 }
               }
-              for (var file in document_var.json.files.btfs.img && pin_images) {
-                file = document_var.json.files.btfs.img[file];
-                numProcs += 1;
-                exec("btfs pin add "+file, remove1process);
-                console.log("BTFS: Pinned img: "+file);
-                pinnedImgsBTFS += 1;
+              if(pin_images) {
+                for (var file in document_var.json.files.btfs.img) {
+                  file = document_var.json.files.btfs.img[file];
+                  numProcs += 1;
+                  exec(btfs_command+file, remove1process);
+                  if(options.verbose) {
+                    console.log("BTFS: Pinned img: "+file);
+                  }
+                  pinnedImgsBTFS += 1;
+                }
               }
             }
           }
@@ -82,6 +110,7 @@ async function fetchAll(mongo_connect_string, limit_pins, filter, resolutions, p
   }
   console.log("Tried to pin "+(pinnedVidsIPFS+pinnedVidsBTFS)+" videos (IPFS: "+pinnedVidsIPFS+", BTFS: "+pinnedVidsBTFS+").");
   console.log("Tried to pin "+(pinnedImgsIPFS+pinnedImgsBTFS)+" images (IPFS: "+pinnedImgsIPFS+", BTFS: "+pinnedImgsBTFS+").");
+  return;
 }
 
 function sleep(ms) {
@@ -92,10 +121,11 @@ function sleep(ms) {
 
 
 const program = new Command();
-program.option("-r, --resolutions", 'Resolutions to pin, separated by "," you could also use "all", or something like "240,480" that\'s also the default.', "240,480");
-program.option("-I, --images", 'Should we pin images (thumbnails)?', true);
-program.option("-V, --videos", 'Should we pin videos?', true);
-program.option("-a, --author", 'Should we pin all the files or only the ones from "author"? It should be a string.', "all");
+program.option("-r, --resolutions <list>", 'Resolutions to pin, separated by "," you could also use "all", or something like "240,480" that\'s also the default.');
+program.option("-a, --author <username>", 'Should we pin all the files or only the ones from "author"? It should be a string.');
+program.option("-I, --images", 'Should we pin images (thumbnails)?', false);
+program.option("-V, --videos", 'Should we pin videos?', false);
+program.option("-v, --verbose", 'To make the program\'s output verbose.', false);
 program.parse(process.argv);
 
 var filter = null;
@@ -103,19 +133,20 @@ var filter = null;
 var lt_ts = new Date().getTime()-(6*30*24*60*60*1000); //Pin from block 0 to 6 months ago.
 const options = program.opts();
 
-if (options.author == "all") {
-  filter = {
-    'ts': {
-      '$gte': 1601557480488, //ts from 1st october 2020, dtube's (avalon's) mainent launch.
-      '$lt': lt_ts
-    }
-  };
+if(typeof options.resolutions == 'undefined') {
+  resolutions = "240,480".split(',');
 } else {
-  filter = {
-    'author': options.author
-  };
+  resolutions = options.resolutions.split(",");
 }
+if(typeof options.author == 'undefined') {
+  var author = "all";
+} else {
+  var author = options.author;
+}
+
+
 
 //change the mongo_connect string here to match your system!
 mongo_connect = 'mongodb://10.147.17.3:27017/avalon?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false';
-fetchAll(mongo_connect, limit_pins, filter, options.resolutions, options.videos, options.images);
+
+fetchAll("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h ", "btfs pin add ", mongo_connect, limit_pins, author, resolutions, options.videos, options.images, options);
