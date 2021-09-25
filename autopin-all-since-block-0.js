@@ -146,7 +146,10 @@ if(typeof options.author == 'undefined') {
 
 
 
-//change the mongo_connect string here to match your system!
-mongo_connect = 'mongodb://10.147.17.3:27017/avalon?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false';
+//change the mongo_connect string here to match your system! (Mainly the IP address)
+mongo_connect = 'mongodb://127.0.0.1:27017/avalon?readPreference=primary&appname=dtube-autopinner&directConnection=true&ssl=false';
 
 fetchAll("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h ", "btfs pin add ", mongo_connect, limit_pins, author, resolutions, options.videos, options.images, options);
+
+// Example to pin without a time limit and without IPFS-Cluster
+// fetchAll("ipfs pin add ", "btfs pin add ", mongo_connect, limit_pins, author, resolutions, options.videos, options.images, options);
