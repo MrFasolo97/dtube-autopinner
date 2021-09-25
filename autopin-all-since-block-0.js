@@ -6,23 +6,10 @@ const { Command } = require("commander");
 const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
 
 
-async function fetchAll(mongo_connect_string, limit_pins, author, resolutions, pin_videos, pin_images) {
+async function fetchAll(mongo_connect_string, limit_pins, filter, resolutions, pin_videos, pin_images) {
   let numProcs = 0;
   function remove1process() {
     numProcs -= 1;
-  }
-  var lt_ts = new Date().getTime()-(6*30*24*60*60*1000); //Pin from block 0 to 6 months ago.
-  if (author == "all") {
-    const filter = {
-      'ts': {
-        '$gte': 1601557480488, //ts from 1st october 2020, dtube's (avalon's) mainent launch.
-        '$lt': lt_ts
-      }
-    };
-  } else {
-  const filter = {
-      'author': author
-    };
   }
   const mongoDBClient = new MongoClient(mongo_connect_string);
   await mongoDBClient.connect();
@@ -111,7 +98,24 @@ program.option("-V, --videos", 'Should we pin videos?', true);
 program.option("-a, --author", 'Should we pin all the files or only the ones from "author"? It should be a string.', "all");
 program.parse(process.argv);
 
+var filter = null;
+
+var lt_ts = new Date().getTime()-(6*30*24*60*60*1000); //Pin from block 0 to 6 months ago.
 const options = program.opts();
 
+if (options.author == "all") {
+  filter = {
+    'ts': {
+      '$gte': 1601557480488, //ts from 1st october 2020, dtube's (avalon's) mainent launch.
+      '$lt': lt_ts
+    }
+  };
+} else {
+  filter = {
+    'author': options.author
+  };
+}
+
+//change the mongo_connect string here to match your system!
 mongo_connect = 'mongodb://10.147.17.3:27017/avalon?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false';
-fetchAll(mongo_connect, limit_pins, options.author, options.resolutions, options.videos, options.images);
+fetchAll(mongo_connect, limit_pins, filter, options.resolutions, options.videos, options.images);
