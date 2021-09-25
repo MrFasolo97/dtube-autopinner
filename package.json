@@ -1,0 +1,21 @@
+{
+  "name": "dtube-autopinner",
+  "version": "0.0.1",
+  "description": "",
+  "main": "autopin.js",
+  "dependencies": {
+    "commander": "^8.2.0",
+    "mongodb": "^4.1.2",
+    "sync-rest-client": "^1.0.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://s7.fso.ovh/git/fasolo97/dtube-autopinner/"
+  },
+  "author": "MrFasolo97",
+  "license": "MIT"
+}

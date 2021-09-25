@@ -6,18 +6,24 @@ const { Command } = require("commander");
 const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
 
 
-async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
+async function fetchAll(mongo_connect_string, limit_pins, author, resolutions, pin_videos, pin_images) {
   let numProcs = 0;
   function remove1process() {
     numProcs -= 1;
   }
   var lt_ts = new Date().getTime()-(6*30*24*60*60*1000); //Pin from block 0 to 6 months ago.
+  if (author == "all") {
+    const filter = {
+      'ts': {
+        '$gte': 1601557480488, //ts from 1st october 2020, dtube's (avalon's) mainent launch.
+        '$lt': lt_ts
+      }
+    };
+  } else {
   const filter = {
-    'ts': {
-      '$gte': 1601557480488, //ts from 1st october 2020, dtube's (avalon's) mainent launch.
-      '$lt': lt_ts
-    }
-  };
+      'author': author
+    };
+  }
   const mongoDBClient = new MongoClient(mongo_connect_string);
   await mongoDBClient.connect();
   const mongoDB = mongoDBClient.db("avalon");
@@ -46,7 +52,7 @@ async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
           (typeof document_var.json.files.btfs != 'undefined'
           || typeof document_var.json.files.ipfs != 'undefined')) {
             if(typeof document_var.json.files.ipfs != 'undefined') {
-              for (var file in document_var.json.files.ipfs.vid) {
+              for (var file in document_var.json.files.ipfs.vid && pin_videos) {
                 if (resolutions.includes(file) || resolutions == "all") {
                   file = document_var.json.files.ipfs.vid[file];
                   numProcs += 1;
@@ -55,7 +61,7 @@ async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
                   pinnedVidsIPFS += 1;
                 }
               }
-              for (var file in document_var.json.files.ipfs.img) {
+              for (var file in document_var.json.files.ipfs.img && pin_images) {
                 file = document_var.json.files.ipfs.img[file];
                 numProcs += 1;
                 exec("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h "+file, remove1process);
@@ -64,7 +70,7 @@ async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
               }
             }
             if(typeof document_var.json.files.btfs != 'undefined') {
-              for (var file in document_var.json.files.btfs.vid) {
+              for (var file in document_var.json.files.btfs.vid && pin_videos) {
                 if (resolutions.includes(file) || resolutions == "all") {
                   file = document_var.json.files.btfs.vid[file];
                   numProcs += 1;
@@ -73,7 +79,7 @@ async function fetchAll(mongo_connect_string, limit_pins, resolutions) {
                   pinnedVidsBTFS += 1;
                 }
               }
-              for (var file in document_var.json.files.btfs.img) {
+              for (var file in document_var.json.files.btfs.img && pin_images) {
                 file = document_var.json.files.btfs.img[file];
                 numProcs += 1;
                 exec("btfs pin add "+file, remove1process);
@@ -99,22 +105,13 @@ function sleep(ms) {
 
 
 const program = new Command();
-program.option("-r, --resolutions", 'Resolutions to pin, separated by "," you could also use "all", or something like "240,480".')
+program.option("-r, --resolutions", 'Resolutions to pin, separated by "," you could also use "all", or something like "240,480" that\'s also the default.', "240,480");
+program.option("-I, --images", 'Should we pin images (thumbnails)?', true);
+program.option("-V, --videos", 'Should we pin videos?', true);
+program.option("-a, --author", 'Should we pin all the files or only the ones from "author"? It should be a string.', "all");
 program.parse(process.argv);
 
 const options = program.opts();
 
-if (typeof options.resolutions == 'undefined') {
-  resolutions = ["240", "480"];
-  console.log("Defaulting to "+ JSON.stringify(resolutions)+" Resolutions");
-} else {
-  if (options.resolutions == "all") {
-    resolutions = "all";
-  } else {
-    resolutions = options.resolutions.split(",");
-  }
-}
-
-
 mongo_connect = 'mongodb://10.147.17.3:27017/avalon?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false';
-fetchAll(mongo_connect, limit_pins, resolutions);
+fetchAll(mongo_connect, limit_pins, options.author, options.resolutions, options.videos, options.images);
