@@ -6,12 +6,23 @@ const { Command } = require("commander");
 const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
 
 
-async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_pins, author, resolutions, pin_videos, pin_images, options) {
+async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_pins, options) {
+  var resolutions = null, author = null;
+  if(typeof options.resolutions == 'undefined') {
+    resolutions = "240,480".split(',');
+  } else {
+    resolutions = options.resolutions.split(",");
+  }
+  if(typeof options.author == 'undefined') {
+    author = "all";
+  } else {
+    author = options.author;
+  }
   let numProcs = 0;
   function remove1process() {
     numProcs -= 1;
   }
-  if (typeof author == 'undefined' || author == "all") {
+  if (author == "all") {
     const mongoDBClient = new MongoClient(mongo_connect_string);
     await mongoDBClient.connect();
     const mongoDB = mongoDBClient.db("avalon");
@@ -56,7 +67,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
           || typeof document_var.json.files.ipfs != 'undefined')) {
             if(typeof document_var.json.files.ipfs != 'undefined') {
               for (var file in document_var.json.files.ipfs.vid) {
-                if ((resolutions.includes(file) || resolutions == "all") && pin_videos) {
+                if ((resolutions.includes(file) || resolutions == "all") && options.videos) {
                   file = document_var.json.files.ipfs.vid[file];
                   numProcs += 1;
                   exec(ipfs_command+file, remove1process);
@@ -66,7 +77,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
                   pinnedVidsIPFS += 1;
                 }
               }
-              if(pin_images) {
+              if(options.images) {
                 for (var file in document_var.json.files.ipfs.img) {
                   file = document_var.json.files.ipfs.img[file];
                   numProcs += 1;
@@ -80,7 +91,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
             }
             if(typeof document_var.json.files.btfs != 'undefined') {
               for (var file in document_var.json.files.btfs.vid) {
-                if (resolutions.includes(file) || resolutions == "all" && pin_videos) {
+                if (resolutions.includes(file) || resolutions == "all" && options.videos) {
                   file = document_var.json.files.btfs.vid[file];
                   numProcs += 1;
                   exec(btfs_command+file, remove1process);
@@ -90,7 +101,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
                   pinnedVidsBTFS += 1;
                 }
               }
-              if(pin_images) {
+              if(options.images) {
                 for (var file in document_var.json.files.btfs.img) {
                   file = document_var.json.files.btfs.img[file];
                   numProcs += 1;
@@ -133,23 +144,14 @@ var filter = null;
 var lt_ts = new Date().getTime()-(6*30*24*60*60*1000); //Pin from block 0 to 6 months ago.
 const options = program.opts();
 
-if(typeof options.resolutions == 'undefined') {
-  resolutions = "240,480".split(',');
-} else {
-  resolutions = options.resolutions.split(",");
-}
-if(typeof options.author == 'undefined') {
-  var author = "all";
-} else {
-  var author = options.author;
-}
+
 
 
 
 //change the mongo_connect string here to match your system! (Mainly the IP address)
 mongo_connect = 'mongodb://127.0.0.1:27017/avalon?readPreference=primary&appname=dtube-autopinner&directConnection=true&ssl=false';
 
-fetchAll("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h ", "btfs pin add ", mongo_connect, limit_pins, author, resolutions, options.videos, options.images, options);
+fetchAll("ipfs-cluster-ctl pin add --expire-in "+24*30*18+"h ", "btfs pin add ", mongo_connect, limit_pins, options);
 
 // Example to pin without a time limit and without IPFS-Cluster
 // fetchAll("ipfs pin add ", "btfs pin add ", mongo_connect, limit_pins, author, resolutions, options.videos, options.images, options);
