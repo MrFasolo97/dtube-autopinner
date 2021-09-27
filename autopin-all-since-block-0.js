@@ -91,7 +91,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
             }
             if(typeof document_var.json.files.btfs != 'undefined') {
               for (var file in document_var.json.files.btfs.vid) {
-                if (resolutions.includes(file) || resolutions == "all" && options.videos) {
+                if ((resolutions.includes(file) || resolutions == "all") && options.videos) {
                   file = document_var.json.files.btfs.vid[file];
                   numProcs += 1;
                   exec(btfs_command+file, remove1process);
