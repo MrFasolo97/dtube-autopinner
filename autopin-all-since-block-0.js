@@ -25,7 +25,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
   if (author == "all") {
     const mongoDBClient = new MongoClient(mongo_connect_string);
     await mongoDBClient.connect();
-    const mongoDB = mongoDBClient.db("avalon");
+    const mongoDB = mongoDBClient.db();
     const contents_collection = mongoDB.collection("contents");
     filter = {
       'ts': {
