@@ -8,21 +8,14 @@ const limit_pins = process.env.LIMIT_CONCURRENT_PINS || 25;
 
 async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_pins, options) {
   var resolutions = null, author = null;
-  if(typeof options.resolutions == 'undefined') {
-    resolutions = "240,480".split(',');
-  } else {
-    resolutions = options.resolutions.split(",");
-  }
-  if(typeof options.author == 'undefined') {
-    author = "all";
-  } else {
-    author = options.author;
-  }
+  resolutions = options.resolutions.split(",");
+  author = options.author;
+
   let numProcs = 0;
   function remove1process() {
     numProcs -= 1;
   }
-  if (author == "all") {
+  if (author == null) {
     const mongoDBClient = new MongoClient(mongo_connect_string);
     await mongoDBClient.connect();
     const mongoDB = mongoDBClient.db();
@@ -67,7 +60,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
           || typeof document_var.json.files.ipfs != 'undefined')) {
             if(typeof document_var.json.files.ipfs != 'undefined') {
               for (var file in document_var.json.files.ipfs.vid) {
-                if ((resolutions.includes(file) || resolutions == "all") && options.videos) {
+                if ((resolutions.includes(file) || resolutions == "all") && options.videos && (oc || options.noc || (options.uoc && oc == -1)) && (!nsfw || nsfw == options.nsfw || (nsfw == -1 && options.unsfw))) {
                   file = document_var.json.files.ipfs.vid[file];
                   numProcs += 1;
                   exec(ipfs_command+file, remove1process);
@@ -77,7 +70,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
                   pinnedVidsIPFS += 1;
                 }
               }
-              if(options.images) {
+              if(options.images && (oc || options.noc || (options.uoc && oc == -1)) && (!nsfw || nsfw == options.nsfw || (nsfw == -1 && options.unsfw))) {
                 for (var file in document_var.json.files.ipfs.img) {
                   file = document_var.json.files.ipfs.img[file];
                   numProcs += 1;
@@ -91,7 +84,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
             }
             if(typeof document_var.json.files.btfs != 'undefined') {
               for (var file in document_var.json.files.btfs.vid) {
-                if ((resolutions.includes(file) || resolutions == "all") && options.videos) {
+                if ((resolutions.includes(file) || resolutions == "all") && options.videos && (oc || options.noc || (options.uoc && oc == -1)) && (!nsfw || nsfw == options.nsfw || (nsfw == -1 && options.unsfw))) {
                   file = document_var.json.files.btfs.vid[file];
                   numProcs += 1;
                   exec(btfs_command+file, remove1process);
@@ -101,7 +94,7 @@ async function fetchAll(ipfs_command, btfs_command, mongo_connect_string, limit_
                   pinnedVidsBTFS += 1;
                 }
               }
-              if(options.images) {
+              if(options.images && (oc || options.noc || (options.uoc && oc == -1)) && (!nsfw || nsfw == options.nsfw || (nsfw == -1 && options.unsfw))) {
                 for (var file in document_var.json.files.btfs.img) {
                   file = document_var.json.files.btfs.img[file];
                   numProcs += 1;
@@ -132,10 +125,14 @@ function sleep(ms) {
 
 
 const program = new Command();
-program.option("-r, --resolutions <list>", 'Resolutions to pin, separated by "," you could also use "all", or something like "240,480" that\'s also the default.');
-program.option("-a, --author <username>", 'Should we pin all the files or only the ones from "author"? It should be a string.');
+program.option("-r, --resolutions <list>", 'Resolutions to pin, separated by "," you could also use "all", or something like "240,480" that\'s also the default.', "240,480");
+program.option("-a, --author <username>", 'Should we pin all the files or only the ones from "author"? It should be a string.', null);
 program.option("-I, --images", 'Should we pin images (thumbnails)?', false);
 program.option("-V, --videos", 'Should we pin videos?', false);
+program.option("--nsfw", 'Should we pin NSFW videos?', false);
+program.option("--unsfw", 'Should we pin videos that aren\'t defined either as NSFW or SFW', false);
+program.option("--noc", 'Should we pin non-original videos?', false);
+program.option("--uoc", 'Should we pin videos when we don\'t know if they are original?', false);
 program.option("-v, --verbose", 'To make the program\'s output verbose.', false);
 program.parse(process.argv);
 
