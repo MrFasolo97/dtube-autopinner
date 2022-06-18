@@ -5,6 +5,7 @@
   "main": "autopin.js",
   "dependencies": {
     "commander": "^8.2.0",
+    "mkdirp": "^1.0.4",
     "mongodb": "^4.1.2",
     "sync-rest-client": "^1.0.3"
   },
@@ -13,8 +14,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://s7.fso.ovh/git/fasolo97/dtube-autopinner/"
+    "url": "https://github.com/MrFasolo97/dtube-autopinner/"
   },
   "author": "MrFasolo97",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.18.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.26.0"
+  }
 }
