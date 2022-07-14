@@ -6,5 +6,5 @@
 ## Installation
     git clone https://github.com/MrFasolo97/dtube-autopinner && cd dtube-autopinner
     npm i
-    nodejs autopin-all-since-block-0.js -h
+    nodejs cli.js -h
 Remember to check the source code for comments, starting with `//`, because you could need to change something.
