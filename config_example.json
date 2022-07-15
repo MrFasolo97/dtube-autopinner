@@ -1,4 +1,4 @@
 {
-  "ipfs-address": "http://localhost:5002",
+  "ipfs-address": "http://localhost:5001",
   "mognodb-address": "mongodb://localhost:27017/avalon"
 }
