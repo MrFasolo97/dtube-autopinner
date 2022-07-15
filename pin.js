@@ -4,9 +4,9 @@ import { exec } from 'node:child_process';
 import * as fs from 'fs';
 import sleep from 'sleep';
 
-export default function pinAll(options) {
+export default function pinAll(options, ipfsAddress) {
   if (options.ipfs !== '' && typeof options.ipfs !== 'undefined') {
-    const ipfsClient = IPFSClient('http://localhost:5002');
+    const ipfsClient = IPFSClient(ipfsAddress);
     const fileContent = fs.readFileSync(options.ipfs, 'ascii');
     const lines = fileContent.split('\n');
     for (const line in lines) {

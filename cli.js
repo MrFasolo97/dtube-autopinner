@@ -1,9 +1,22 @@
 /* eslint-disable no-restricted-syntax */
 import { Command } from 'commander';
+import * as fs from 'fs';
+import { config } from 'process';
 import fetchAll from './fetchAll.js';
 import pinAll from './pin.js';
 
 const configLimitPins = process.env.LIMIT_CONCURRENT_PINS || 5;
+
+function loadConfig() {
+  let configData;
+  if (fs.existsSync('config.json')) {
+    const rawdata = fs.readFileSync('config.json');
+    configData = JSON.parse(rawdata);
+  } else {
+    configData = {};
+  }
+  return configData;
+}
 
 const program = new Command();
 program
@@ -22,8 +35,12 @@ program
   .option('-v, --verbose', 'To make the program\'s output verbose.', false)
   .description('Saves all the corresponding hashes to 2 files, divided by protocol')
   .action((options) => {
+    const configData = loadConfig();
+    let mongoConnect = 'mongodb://localhost:27017/avalon';
+    if (configData['mongo-address'] !== null && config !== null) {
+      mongoConnect = config['mongo-address'];
+    }
     // change the mongo_connect string here to match your system! (Mainly the IP address)
-    const mongoConnect = 'mongodb://10.147.17.3:27017/avalon';
     fetchAll('btfs pin add ', mongoConnect, configLimitPins, options);
   });
 program
@@ -34,7 +51,12 @@ program
   .description('Queue IPFS and BTFS pinning requests.')
   .action((options) => {
     console.log(options);
-    pinAll(options);
+    const configData = loadConfig();
+    let ipfsAddress = 'http://localhost:5001';
+    if (configData['ipfs-address'] !== null && config !== null) {
+      ipfsAddress = configData['ipfs-address'];
+    }
+    pinAll(options, ipfsAddress);
   });
 
 program.parse();
