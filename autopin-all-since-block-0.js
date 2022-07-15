@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax */
 const restClient = require('sync-rest-client');
 const { exec } = require('child_process');
 const { MongoClient } = require('mongodb');
@@ -89,13 +90,15 @@ async function fetchAll(ipfsCommand, btfsCommand, mongoConnectString, limitPins,
             if (options.images && (oc || options.noc || (options.uoc && oc === -1))
               && (!nsfw || nsfw === options.nsfw || (nsfw === -1 && options.unsfw))) {
               for (let file in documentVar.json.files.ipfs.img) {
-                file = documentVar.json.files.ipfs.img[file];
-                numProcs += 1;
-                exec(ipfsCommand + file, remove1process);
-                if (options.verbose) {
-                  console.log(`IPFS: Pinned img: ${file}`);
+                if (documentVar.json.files.ipfs.img[file] !== null) {
+                  file = documentVar.json.files.ipfs.img[file];
+                  numProcs += 1;
+                  exec(ipfsCommand + file, remove1process);
+                  if (options.verbose) {
+                    console.log(`IPFS: Pinned img: ${file}`);
+                  }
+                  pinnedImgsIPFS += 1;
                 }
-                pinnedImgsIPFS += 1;
               }
             }
           }
@@ -116,13 +119,15 @@ async function fetchAll(ipfsCommand, btfsCommand, mongoConnectString, limitPins,
             if (options.images && (oc || options.noc || (options.uoc && oc === -1))
             && (!nsfw || nsfw === options.nsfw || (nsfw === -1 && options.unsfw))) {
               for (let file in documentVar.json.files.btfs.img) {
-                file = documentVar.json.files.btfs.img[file];
-                numProcs += 1;
-                exec(btfsCommand + file, remove1process);
-                if (options.verbose) {
-                  console.log(`BTFS: Pinned img: ${file}`);
+                if (documentVar.json.files.btfs.img[file] !== null) {
+                  file = documentVar.json.files.btfs.img[file];
+                  numProcs += 1;
+                  exec(btfsCommand + file, remove1process);
+                  if (options.verbose) {
+                    console.log(`BTFS: Pinned img: ${file}`);
+                  }
+                  pinnedImgsBTFS += 1;
                 }
-                pinnedImgsBTFS += 1;
               }
             }
           }
